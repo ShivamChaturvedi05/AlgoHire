@@ -1,13 +1,30 @@
 import { useState } from 'react';
 import Navbar from '../components/layout/Navbar';
+import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Submitting:", { email, password });
+    setError("");
+
+    try {
+      const userData = await authService.login({ email, password });
+      
+      console.log("Login Success!", userData);
+      
+      navigate('/dashboard'); 
+      
+    } catch (err) {
+      console.error(err);
+      setError("Invalid email or password");
+    }
   };
 
   return (
