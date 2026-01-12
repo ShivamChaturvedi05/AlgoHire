@@ -60,4 +60,14 @@ const deactivateRoom = asyncHandler(async (req, res) => {
     );
 });
 
-export { createRoom, getRoom, deactivateRoom };
+const getUserInterviews = asyncHandler(async (req, res) => {
+    const interviews = await Interview.find({ 
+        interviewer: req.user._id 
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new ApiResponse(200, interviews, "Interview history fetched successfully")
+    );
+});
+
+export { createRoom, getRoom, deactivateRoom, getUserInterviews };
