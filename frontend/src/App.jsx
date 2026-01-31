@@ -15,6 +15,13 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
 
         <Route path="/room/:roomId" element={<Room />} />
+
+
+        <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* 2. Add this NEW Route */}
+        <Route path="/room/:roomId" element={<Room />} />
+
       </Routes>
     </>
   );
