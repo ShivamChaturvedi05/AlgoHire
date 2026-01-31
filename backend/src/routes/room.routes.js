@@ -9,10 +9,10 @@ const router = Router();
 
 router.route("/create").post(verifyJWT, createRoom);
 
+router.route("/history").get(verifyJWT, getUserInterviews);
+
 router.route("/:roomId/end").post(verifyJWT, deactivateRoom);
 
 router.route("/:roomId").get(getRoom);
-
-router.route("/history").get(verifyJWT, getUserInterviews);
 
 export default router;
