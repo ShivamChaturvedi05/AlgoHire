@@ -13,6 +13,16 @@ const roomService = {
     }
   },
 
+  getRoom: async (roomId) => {
+    try {
+      const response = await api.get(`/rooms/${roomId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching room:", error);
+      throw error;
+    }
+  },
+
 
   getHistory: async () => {
     try {
