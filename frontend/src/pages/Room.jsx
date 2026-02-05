@@ -187,7 +187,7 @@ function Room() {
                  <span className="text-xs text-gray-500">JavaScript</span>
                </div>
                <div className="flex-1 overflow-hidden relative">
-                 <CodeEditor /> 
+                 <CodeEditor socket={socketRef.current} roomId={roomId} /> 
                </div>
              </>
            ) : (
