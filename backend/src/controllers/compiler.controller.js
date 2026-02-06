@@ -11,10 +11,10 @@ const executeCode = asyncHandler(async (req, res) => {
     }
 
     const runtimeMap = {
-        "javascript": { language: "javascript", version: "18.15.0" },
-        "python": { language: "python", version: "3.10.0" },
-        "java": { language: "java", version: "15.0.2" },
-        "cpp": { language: "c++", version: "10.2.0" }
+        "javascript": { language: "javascript", version: "*" },
+        "python": { language: "python", version: "*" },
+        "java": { language: "java", version: "*" },
+        "cpp": { language: "c++", version: "*" }
     };
 
     const runtime = runtimeMap[language];
@@ -34,7 +34,6 @@ const executeCode = asyncHandler(async (req, res) => {
             ]
         });
 
-        // Piston returns { run: { stdout: "...", stderr: "..." } }
         const { run } = response.data;
 
         return res.status(200).json(
@@ -42,7 +41,16 @@ const executeCode = asyncHandler(async (req, res) => {
         );
 
     } catch (error) {
-        console.error("Execution Error:", error.message);
+        
+        if (error.response) {
+            console.error("Status:", error.response.status);
+            console.error("Data:", JSON.stringify(error.response.data, null, 2));
+        } else if (error.request) {
+            console.error("No response received from Piston API. Check your internet connection.");
+        } else {
+            console.error("Error Message:", error.message);
+        }
+
         throw new ApiError(500, "Failed to execute code");
     }
 });
