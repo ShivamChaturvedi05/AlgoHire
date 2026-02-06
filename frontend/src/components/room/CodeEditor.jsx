@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 
-const CodeEditor = ({ socket, roomId }) => {
+const CodeEditor = ({ socket, roomId, language }) => { // <--- 1. Add language prop
   const [code, setCode] = useState("// Start coding here...");
 
   useEffect(() => {
@@ -29,7 +29,7 @@ const CodeEditor = ({ socket, roomId }) => {
     <div className="h-full w-full overlay overflow-hidden">
       <Editor
         height="100%"
-        defaultLanguage="javascript"
+        language={language} // <--- 2. Use the dynamic language here
         theme="vs-dark"
         value={code} 
         onChange={handleEditorChange}

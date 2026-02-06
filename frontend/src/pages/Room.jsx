@@ -7,6 +7,14 @@ import { useAuth } from '../context/AuthContext';
 import roomService from '../services/roomService';
 import { v4 as uuidv4 } from 'uuid';
 
+// 1. Define Supported Languages
+const LANGUAGES = [
+  { name: "JavaScript", value: "javascript" },
+  { name: "Python", value: "python" },
+  { name: "Java", value: "java" },
+  { name: "C++", value: "cpp" }
+];
+
 function Room() {
   const { roomId } = useParams();
   const { user } = useAuth(); 
@@ -18,10 +26,11 @@ function Room() {
   
   const [guestName, setGuestName] = useState("");
   const [hasJoined, setHasJoined] = useState(false);
-
   const [pendingCandidate, setPendingCandidate] = useState(null);
 
-  // 1. Fetch Room Details
+  // 2. Add Language State
+  const [language, setLanguage] = useState("javascript");
+
   useEffect(() => {
     const checkRoom = async () => {
       try {
@@ -35,7 +44,6 @@ function Room() {
     checkRoom();
   }, [roomId]);
 
-  // 2. The Master Join Function 
   const joinRoom = (name, userId) => {
     if (!roomDetails) return;
 
@@ -70,10 +78,14 @@ function Room() {
       });
     }
 
+    // 3. Listen for Language Updates from other users
+    socketRef.current.on('language-update', (newLang) => {
+        setLanguage(newLang);
+    });
+
     setHasJoined(true);
   };
 
-  // 3. Helper to Admit User
   const handleAdmit = () => {
     if (pendingCandidate && socketRef.current) {
         socketRef.current.emit('admit-candidate', { socketId: pendingCandidate.socketId });
@@ -81,7 +93,16 @@ function Room() {
     }
   };
 
-  // 4. Auto-Join if User is Logged In
+  // 4. Handle Language Selection
+  const handleLanguageChange = (e) => {
+      const newLang = e.target.value;
+      setLanguage(newLang);
+      // Emit change to server
+      if (socketRef.current) {
+          socketRef.current.emit('language-change', { roomId, language: newLang });
+      }
+  };
+
   useEffect(() => {
     if (user && roomDetails && !hasJoined) {
       joinRoom(user.fullName, user._id);
@@ -123,7 +144,7 @@ function Room() {
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white relative">
       
-      {/* --- NEW NOTIFICATION BOX --- */}
+      {/* NOTIFICATION BOX */}
       {pendingCandidate && (
         <div className="fixed top-24 right-6 bg-gray-800 border border-indigo-500 shadow-2xl p-4 rounded-lg z-50 animate-bounce max-w-sm">
             <h3 className="font-bold text-white mb-1 flex items-center gap-2">
@@ -148,7 +169,6 @@ function Room() {
             </div>
         </div>
       )}
-      {/* ---------------------------- */}
 
       <Navbar position="static" />
       
@@ -182,12 +202,35 @@ function Room() {
            
            {isApproved ? (
              <>
-               <div className="bg-gray-900 border-b border-gray-700 p-2 flex justify-between items-center px-4 shrink-0 h-10">
-                 <span className="text-sm font-medium text-gray-300">main.js</span>
-                 <span className="text-xs text-gray-500">JavaScript</span>
+               {/* 5. Updated Header with Dropdown */}
+               <div className="bg-gray-900 border-b border-gray-700 p-2 flex justify-between items-center px-4 shrink-0 h-12">
+                 <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-300">main</span>
+                    {/* Visual file extension */}
+                    <span className="text-xs text-gray-500">
+                        .{language === 'cpp' ? 'cpp' : language === 'python' ? 'py' : language === 'java' ? 'java' : 'js'}
+                    </span>
+                 </div>
+                 
+                 {/* Language Selector */}
+                 <select 
+                   value={language}
+                   onChange={handleLanguageChange}
+                   className="bg-gray-800 text-gray-300 text-xs rounded border border-gray-600 px-2 py-1 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                 >
+                   {LANGUAGES.map(lang => (
+                     <option key={lang.value} value={lang.value}>{lang.name}</option>
+                   ))}
+                 </select>
                </div>
+
                <div className="flex-1 overflow-hidden relative">
-                 <CodeEditor socket={socketRef.current} roomId={roomId} /> 
+                 {/* 6. Pass Language Prop */}
+                 <CodeEditor 
+                    socket={socketRef.current} 
+                    roomId={roomId} 
+                    language={language}
+                 /> 
                </div>
              </>
            ) : (
