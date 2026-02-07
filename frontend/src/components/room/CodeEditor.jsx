@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 
-const CodeEditor = ({ socket, roomId, language }) => { // <--- 1. Add language prop
+const CodeEditor = ({ socket, roomId, language, onCodeChange }) => { 
   const [code, setCode] = useState("// Start coding here...");
 
   useEffect(() => {
@@ -9,6 +9,9 @@ const CodeEditor = ({ socket, roomId, language }) => { // <--- 1. Add language p
 
     const handleCodeUpdate = (newCode) => {
       setCode(newCode); 
+      if (onCodeChange) {
+        onCodeChange(newCode); 
+      }
     };
 
     socket.on("code-update", handleCodeUpdate);
@@ -16,10 +19,15 @@ const CodeEditor = ({ socket, roomId, language }) => { // <--- 1. Add language p
     return () => {
       socket.off("code-update", handleCodeUpdate);
     };
-  }, [socket]);
+  }, [socket, onCodeChange]);
 
   const handleEditorChange = (value) => {
     setCode(value);
+
+    if (onCodeChange) {
+      onCodeChange(value);
+    }
+
     if (socket) {
         socket.emit("code-change", { roomId, code: value });
     }
@@ -29,7 +37,7 @@ const CodeEditor = ({ socket, roomId, language }) => { // <--- 1. Add language p
     <div className="h-full w-full overlay overflow-hidden">
       <Editor
         height="100%"
-        language={language} // <--- 2. Use the dynamic language here
+        language={language}
         theme="vs-dark"
         value={code} 
         onChange={handleEditorChange}
