@@ -32,6 +32,7 @@ const setupSocket = (io) => {
         });
 
         socket.on("code-change", ({ roomId, code }) => {
+            //console.log(`🎨 CodeChange ${code} from ${socket.id}`);
             socket.to(roomId).emit("code-update", code);
         });
 
@@ -40,6 +41,7 @@ const setupSocket = (io) => {
         });
 
         socket.on("whiteboard-draw", ({ roomId, data }) => {
+            // console.log(`🎨 WB Draw in ${roomId} from ${socket.id}`);
             socket.to(roomId).emit("whiteboard-update", data);
         });
 
