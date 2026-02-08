@@ -1,16 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react"; 
 import { Excalidraw } from "@excalidraw/excalidraw";
 
 const Whiteboard = ({ socket, roomId }) => {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
 
+  const isRemoteUpdate = useRef(false);
+  
+  const timeoutRef = useRef(null);
+
   useEffect(() => {
     if (!socket || !excalidrawAPI) return;
 
     const handleRemoteUpdate = (elements) => {
-      excalidrawAPI.updateScene({
-        elements: elements
-      });
+      isRemoteUpdate.current = true;
+      excalidrawAPI.updateScene({ elements });
     };
 
     socket.on("whiteboard-update", handleRemoteUpdate);
@@ -20,17 +23,27 @@ const Whiteboard = ({ socket, roomId }) => {
     };
   }, [socket, excalidrawAPI]);
 
-  const handleChange = (elements, appState) => {
-
-    if (appState.draggingElement || appState.resizingElement || appState.editingElement) {
-       if (socket) {
-          socket.emit("whiteboard-draw", {
-             roomId,
-             data: elements 
-          });
-       }
+  const handleChange = (elements) => {
+    if (isRemoteUpdate.current) {
+       isRemoteUpdate.current = false;
+       return;
     }
-    
+
+    //Throttler: If a timer is already running, we are "too busy". Skip this update.
+    if (timeoutRef.current) {
+        return; 
+    }
+
+    if (socket) {
+        socket.emit("whiteboard-draw", {
+            roomId,
+            data: elements 
+        });
+    }
+
+    timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
+    }, 50); 
   };
 
   return (
