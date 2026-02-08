@@ -3,10 +3,11 @@ import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/layout/Navbar';
 import CodeEditor from '../components/room/CodeEditor';
-import OutputConsole from '../components/room/OutputConsole'; // <--- NEW IMPORT
+import OutputConsole from '../components/room/OutputConsole';
+import Whiteboard from '../components/room/Whiteboard'; // <--- NEW IMPORT
 import { useAuth } from '../context/AuthContext';
 import roomService from '../services/roomService';
-import compilerService from '../services/compilerService';     // <--- NEW IMPORT
+import compilerService from '../services/compilerService'; 
 import { v4 as uuidv4 } from 'uuid';
 
 const LANGUAGES = [
@@ -34,6 +35,8 @@ function Room() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [codeRef, setCodeRef] = useState("// Start coding here...");
+
+  const [activeTab, setActiveTab] = useState("code"); 
 
   useEffect(() => {
     const checkRoom = async () => {
@@ -97,8 +100,8 @@ function Room() {
       }
   };
 
-  // --- NEW: RUN CODE FUNCTION ---
-const runCode = async () => {
+  // --- RUN CODE FUNCTION ---
+  const runCode = async () => {
     setIsConsoleOpen(true);
     setIsCompiling(true);
     setOutput(""); 
@@ -177,49 +180,74 @@ const runCode = async () => {
            
            {isApproved ? (
              <>
+               {/* --- HEADER: TABS + TOOLS --- */}
                <div className="bg-gray-900 border-b border-gray-700 p-2 flex justify-between items-center px-4 shrink-0 h-12">
-                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-300">main</span>
-                    <span className="text-xs text-gray-500">.{language === 'cpp' ? 'cpp' : language === 'python' ? 'py' : language === 'java' ? 'java' : 'js'}</span>
-                 </div>
                  
-                 <div className="flex items-center gap-3">
-                    <select 
-                      value={language}
-                      onChange={handleLanguageChange}
-                      className="bg-gray-800 text-gray-300 text-xs rounded border border-gray-600 px-2 py-1 outline-none focus:border-indigo-500"
-                    >
-                      {LANGUAGES.map(lang => (
-                        <option key={lang.value} value={lang.value}>{lang.name}</option>
-                      ))}
-                    </select>
-
-                    {/* --- RUN BUTTON --- */}
-                    <button 
-                        onClick={runCode}
-                        disabled={isCompiling}
-                        className={`text-xs font-bold px-4 py-1.5 rounded transition-all flex items-center gap-2 ${
-                            isCompiling 
-                            ? "bg-gray-700 text-gray-400 cursor-not-allowed" 
-                            : "bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20"
-                        }`}
-                    >
-                        {isCompiling ? "Running..." : "▶ Run Code"}
-                    </button>
+                 {/* LEFT: TABS */}
+                 <div className="flex gap-4">
+                     <button 
+                       onClick={() => setActiveTab("code")}
+                       className={`text-sm font-medium transition-colors ${activeTab === "code" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-gray-400 hover:text-gray-200"}`}
+                     >
+                       &lt;/&gt; Code
+                     </button>
+                     <button 
+                       onClick={() => setActiveTab("board")}
+                       className={`text-sm font-medium transition-colors ${activeTab === "board" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-gray-400 hover:text-gray-200"}`}
+                     >
+                       🎨 Whiteboard
+                     </button>
                  </div>
+
+                 {/* RIGHT: TOOLS (Only show if Code tab is active) */}
+                 {activeTab === "code" && (
+                     <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500 mr-2">
+                           .{language === 'cpp' ? 'cpp' : language === 'python' ? 'py' : language === 'java' ? 'java' : 'js'}
+                        </span>
+                        <select 
+                          value={language}
+                          onChange={handleLanguageChange}
+                          className="bg-gray-800 text-gray-300 text-xs rounded border border-gray-600 px-2 py-1 outline-none focus:border-indigo-500"
+                        >
+                          {LANGUAGES.map(lang => (
+                            <option key={lang.value} value={lang.value}>{lang.name}</option>
+                          ))}
+                        </select>
+                        <button 
+                            onClick={runCode}
+                            disabled={isCompiling}
+                            className={`text-xs font-bold px-4 py-1.5 rounded transition-all flex items-center gap-2 ${
+                                isCompiling 
+                                ? "bg-gray-700 text-gray-400 cursor-not-allowed" 
+                                : "bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20"
+                            }`}
+                        >
+                            {isCompiling ? "Running..." : "▶ Run Code"}
+                        </button>
+                     </div>
+                 )}
                </div>
 
+               {/* --- MAIN CONTENT AREA --- */}
                <div className="flex-1 overflow-hidden relative">
-                 <CodeEditor 
-                    socket={socketRef.current} 
-                    roomId={roomId} 
-                    language={language}
-                    onCodeChange={handleLocalCodeChange} 
-                 /> 
+                 {activeTab === "code" ? (
+                     <CodeEditor 
+                        socket={socketRef.current} 
+                        roomId={roomId} 
+                        language={language}
+                        onCodeChange={handleLocalCodeChange} 
+                     />
+                 ) : (
+                     <Whiteboard 
+                        socket={socketRef.current}
+                        roomId={roomId}
+                     />
+                 )}
                </div>
 
-               {/* --- OUTPUT CONSOLE --- */}
-               {isConsoleOpen && (
+               {/* --- OUTPUT CONSOLE (Only for Code Tab) --- */}
+               {isConsoleOpen && activeTab === "code" && (
                  <OutputConsole 
                     output={output} 
                     isLoading={isCompiling} 

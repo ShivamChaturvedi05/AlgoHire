@@ -6,3 +6,11 @@
     @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300;
   }
 }
+
+.excalidraw svg {
+    display: inline !important;
+    vertical-align: baseline !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+}
