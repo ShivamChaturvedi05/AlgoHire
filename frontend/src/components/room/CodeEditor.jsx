@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 
 const CodeEditor = ({ socket, roomId, language, onCodeChange }) => { 
   const [code, setCode] = useState("// Start coding here...");
+  
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -23,14 +25,16 @@ const CodeEditor = ({ socket, roomId, language, onCodeChange }) => {
 
   const handleEditorChange = (value) => {
     setCode(value);
+    if (onCodeChange) onCodeChange(value);
 
-    if (onCodeChange) {
-      onCodeChange(value);
+    if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
     }
-
-    if (socket) {
-        socket.emit("code-change", { roomId, code: value });
-    }
+    debounceRef.current = setTimeout(() => {
+        if (socket) {
+             socket.emit("code-change", { roomId, code: value });
+        }
+    }, 500); 
   };
 
   return (
