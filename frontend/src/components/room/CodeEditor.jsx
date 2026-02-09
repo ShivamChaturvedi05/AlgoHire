@@ -3,17 +3,15 @@ import Editor from '@monaco-editor/react';
 
 const CodeEditor = ({ socket, roomId, language, onCodeChange }) => { 
   const [code, setCode] = useState("// Start coding here...");
-  
-  const debounceRef = useRef(null);
+
+  const isThrottled = useRef(false);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleCodeUpdate = (newCode) => {
       setCode(newCode); 
-      if (onCodeChange) {
-        onCodeChange(newCode); 
-      }
+      if (onCodeChange) onCodeChange(newCode); 
     };
 
     socket.on("code-update", handleCodeUpdate);
@@ -27,13 +25,20 @@ const CodeEditor = ({ socket, roomId, language, onCodeChange }) => {
     setCode(value);
     if (onCodeChange) onCodeChange(value);
 
-    if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
+    //THROTTLING LOGIC 
+
+    if (isThrottled.current) {
+        return; 
     }
-    debounceRef.current = setTimeout(() => {
-        if (socket) {
-             socket.emit("code-change", { roomId, code: value });
-        }
+
+    if (socket) {
+        socket.emit("code-change", { roomId, code: value });
+    }
+
+    isThrottled.current = true;
+    setTimeout(() => {
+        isThrottled.current = false;
+        
     }, 500); 
   };
 
