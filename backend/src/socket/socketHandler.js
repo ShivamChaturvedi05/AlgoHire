@@ -31,9 +31,8 @@ const setupSocket = (io) => {
             io.to(socketId).emit("room-joined", { status: "approved" });
         });
 
-        socket.on("code-change", ({ roomId, code }) => {
-            //console.log(`🎨 CodeChange ${code} from ${socket.id}`);
-            socket.to(roomId).emit("code-update", code);
+        socket.on("code-change", ({ roomId, changes }) => {
+            socket.to(roomId).emit("code-update", { changes });
         });
 
         socket.on("language-change", ({ roomId, language }) => {
@@ -41,7 +40,7 @@ const setupSocket = (io) => {
         });
 
         socket.on("whiteboard-draw", ({ roomId, data }) => {
-            // console.log(`🎨 WB Draw in ${roomId} from ${socket.id}`);
+             console.log(`🎨 WB Draw in ${roomId} from ${socket.id}`);
             socket.to(roomId).emit("whiteboard-update", data);
         });
 
