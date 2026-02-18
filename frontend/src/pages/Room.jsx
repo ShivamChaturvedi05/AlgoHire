@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/layout/Navbar';
@@ -34,7 +34,7 @@ function Room() {
   const [output, setOutput] = useState("");
   const [isCompiling, setIsCompiling] = useState(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
-  const [codeRef, setCodeRef] = useState("// Start coding here...");
+  const codeValueRef = useRef("// Start coding here...");
 
   const [activeTab, setActiveTab] = useState("code"); 
 
@@ -77,11 +77,6 @@ function Room() {
 
     socketRef.current.on('language-update', (newLang) => setLanguage(newLang));
     
-    // Listen for code updates to keep our reference fresh for the compiler
-    socketRef.current.on('code-update', (newCode) => {
-        setCodeRef(newCode);
-    });
-
     setHasJoined(true);
   };
 
@@ -107,7 +102,7 @@ function Room() {
     setOutput(""); 
 
     try {
-        const result = await compilerService.execute(language, codeRef);
+        const result = await compilerService.execute(language, codeValueRef.current);
 
         const outputData = result.data || {};
         const finalOutput = outputData.stdout || outputData.stderr || "No output returned";
@@ -122,9 +117,9 @@ function Room() {
     }
   };
 
-  const handleLocalCodeChange = (newCode) => {
-      setCodeRef(newCode);
-  }
+  const handleLocalCodeChange = useCallback((newCode) => {
+      codeValueRef.current = newCode;
+  }, []);
 
   useEffect(() => {
     if (user && roomDetails && !hasJoined) {
