@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../components/layout/Navbar';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
@@ -13,7 +13,14 @@ function Login() {
   const [error, setError] = useState("");
   
   const navigate = useNavigate();
-  const { login } = useAuth(); // 2. Get the login function from global state
+  const { user, login } = useAuth(); // 2. Get the login function from global state
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
