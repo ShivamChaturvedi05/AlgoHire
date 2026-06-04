@@ -31,6 +31,7 @@ function Room() {
   const [guestName, setGuestName] = useState("");
   const [hasJoined, setHasJoined] = useState(false);
   const [pendingCandidate, setPendingCandidate] = useState(null);
+  const [candidateName, setCandidateName] = useState(null);
   const [language, setLanguage] = useState("javascript");
 
   // --- COMPILER STATES ---
@@ -70,6 +71,7 @@ function Room() {
           codeValueRef.current = details.codeState || "// No code saved";
           setLanguage(details.language || "javascript");
           setInitialWhiteboard(details.whiteboardState);
+          setCandidateName(details.candidateName);
         }
       } catch (err) {
         console.error("Room check failed:", err);
@@ -110,13 +112,20 @@ function Room() {
       if (state.whiteboardState) {
         setInitialWhiteboard(state.whiteboardState);
       }
+      if (state.candidateName) {
+        setCandidateName(state.candidateName);
+      }
     });
 
     if (isHost) {
-      socketRef.current.on('user-waiting', ({ userId, socketId }) => {
-        setPendingCandidate({ userId, socketId });
+      socketRef.current.on('user-waiting', ({ userId, socketId, username }) => {
+        setPendingCandidate({ userId, socketId, username });
       });
     }
+
+    socketRef.current.on('candidate-joined', ({ username }) => {
+      setCandidateName(username);
+    });
 
     socketRef.current.on('language-update', (newLang) => setLanguage(newLang));
 
@@ -133,7 +142,11 @@ function Room() {
 
   const handleAdmit = () => {
     if (pendingCandidate && socketRef.current) {
-        socketRef.current.emit('admit-candidate', { socketId: pendingCandidate.socketId });
+        socketRef.current.emit('admit-candidate', { 
+            socketId: pendingCandidate.socketId,
+            roomId,
+            username: pendingCandidate.username 
+        });
         setPendingCandidate(null);
     }
   };
@@ -244,7 +257,7 @@ function Room() {
       
       {pendingCandidate && (
         <div className="fixed top-24 right-6 bg-white dark:bg-gray-800 border border-indigo-500 shadow-2xl p-4 rounded-lg z-50 animate-bounce max-w-sm">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-1">👤 Candidate Waiting</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white mb-1">👤 {pendingCandidate.username || 'Candidate'} Waiting</h3>
             <div className="flex gap-3 mt-4">
                 <button onClick={handleAdmit} className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded text-sm font-bold">Admit</button>
                 <button onClick={() => setPendingCandidate(null)} className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded text-sm font-bold">Deny</button>
@@ -262,19 +275,28 @@ function Room() {
           className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 hidden md:flex md:flex-col shadow-sm z-10 shrink-0"
         >
            <h2 className="text-xl font-bold mb-4">Room Info</h2>
-           <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg mb-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Invite Candidate:</p>
-            <button 
-              onClick={handleCopyLink}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 text-sm font-semibold rounded transition-colors"
-            >
-              {copied ? "✅ Copied!" : "📋 Copy Invite Link"}
-            </button>
-          </div>
+           {isHost && !isCompleted && (
+             <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg mb-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Invite Candidate:</p>
+              <button 
+                onClick={handleCopyLink}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 text-sm font-semibold rounded transition-colors"
+              >
+                {copied ? "✅ Copied!" : "📋 Copy Invite Link"}
+              </button>
+            </div>
+           )}
            <div className="mt-6">
               <p className="text-gray-500 dark:text-gray-400 text-sm">Your Role:</p>
               <p className="font-bold text-lg text-gray-900 dark:text-white capitalize">{isHost ? "Interviewer (Host)" : "Candidate"}</p>
            </div>
+
+           {(isHost && candidateName) && (
+              <div className="mt-4 bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800/30">
+                 <p className="text-gray-500 dark:text-gray-400 text-sm">Joined Candidate:</p>
+                 <p className="font-bold text-gray-900 dark:text-white truncate" title={candidateName}>{candidateName}</p>
+              </div>
+           )}
            
            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-6 mb-2 px-2 uppercase tracking-wider">Controls</h3>
            <div className="space-y-3">
