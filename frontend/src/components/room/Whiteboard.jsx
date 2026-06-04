@@ -1,12 +1,24 @@
 import { useEffect, useState, useRef } from "react"; 
 import { Excalidraw } from "@excalidraw/excalidraw";
 
-const Whiteboard = ({ socket, roomId }) => {
+const Whiteboard = ({ socket, roomId, initialElements }) => {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
 
   const isRemoteUpdate = useRef(false);
   
   const timeoutRef = useRef(null);
+
+  // Load initial whiteboard state from Redis when Excalidraw is ready
+  useEffect(() => {
+    if (!excalidrawAPI || !initialElements || initialElements.length === 0) return;
+
+    isRemoteUpdate.current = true;
+    excalidrawAPI.updateScene({ elements: initialElements });
+    // Reset the flag after a short delay to allow Excalidraw to process
+    setTimeout(() => {
+      isRemoteUpdate.current = false;
+    }, 100);
+  }, [excalidrawAPI, initialElements]);
 
   useEffect(() => {
     if (!socket || !excalidrawAPI) return;

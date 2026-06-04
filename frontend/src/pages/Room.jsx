@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/layout/Navbar';
 import CodeEditor from '../components/room/CodeEditor';
 import OutputConsole from '../components/room/OutputConsole';
-import Whiteboard from '../components/room/Whiteboard'; // <--- NEW IMPORT
+import Whiteboard from '../components/room/Whiteboard';
 import { useAuth } from '../context/AuthContext';
 import roomService from '../services/roomService';
 import compilerService from '../services/compilerService'; 
@@ -19,6 +19,7 @@ const LANGUAGES = [
 
 function Room() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth(); 
   const socketRef = useRef(null);
   
@@ -30,13 +31,18 @@ function Room() {
   const [pendingCandidate, setPendingCandidate] = useState(null);
   const [language, setLanguage] = useState("javascript");
 
-  // --- NEW COMPILER STATES ---
+  // --- COMPILER STATES ---
   const [output, setOutput] = useState("");
   const [isCompiling, setIsCompiling] = useState(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const codeValueRef = useRef("// Start coding here...");
 
   const [activeTab, setActiveTab] = useState("code"); 
+
+  // --- INITIAL STATE FROM REDIS ---
+  const [initialCode, setInitialCode] = useState(null);
+  const [initialWhiteboard, setInitialWhiteboard] = useState(null);
+  const [interviewEnded, setInterviewEnded] = useState(false);
 
   useEffect(() => {
     const checkRoom = async () => {
@@ -69,6 +75,21 @@ function Room() {
       if (status === 'approved') setIsApproved(true);
     });
 
+    // Receive initial state from Redis
+    socketRef.current.on('room-state', (state) => {
+      console.log("📥 Received room state from server:", state);
+      if (state.codeState !== undefined) {
+        setInitialCode(state.codeState);
+        codeValueRef.current = state.codeState;
+      }
+      if (state.language) {
+        setLanguage(state.language);
+      }
+      if (state.whiteboardState) {
+        setInitialWhiteboard(state.whiteboardState);
+      }
+    });
+
     if (isHost) {
       socketRef.current.on('user-waiting', ({ userId, socketId }) => {
         setPendingCandidate({ userId, socketId });
@@ -76,6 +97,14 @@ function Room() {
     }
 
     socketRef.current.on('language-update', (newLang) => setLanguage(newLang));
+
+    // Listen for interview end
+    socketRef.current.on('interview-ended', ({ message }) => {
+      setInterviewEnded(true);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
+    });
     
     setHasJoined(true);
   };
@@ -93,6 +122,12 @@ function Room() {
       if (socketRef.current) {
           socketRef.current.emit('language-change', { roomId, language: newLang });
       }
+  };
+
+  const handleEndInterview = () => {
+    if (socketRef.current) {
+      socketRef.current.emit('end-interview', { roomId });
+    }
   };
 
   // --- RUN CODE FUNCTION ---
@@ -127,6 +162,28 @@ function Room() {
     }
   }, [user, roomDetails]);
 
+  // Cleanup socket on unmount
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  const isHost = user && roomDetails && roomDetails.interviewer === user._id;
+
+  if (interviewEnded) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-900 text-white items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">✅</div>
+          <h2 className="text-2xl font-bold mb-2">Interview Ended</h2>
+          <p className="text-gray-400">The interview has been saved. Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!roomDetails) return <div className="bg-gray-900 h-screen text-white flex items-center justify-center">Loading Room...</div>;
 
@@ -160,14 +217,26 @@ function Room() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* LEFT PANEL */}
-        <div className="w-1/4 bg-gray-800 border-r border-gray-700 p-4 hidden md:block">
+        <div className="w-1/4 bg-gray-800 border-r border-gray-700 p-4 hidden md:flex md:flex-col">
            <h2 className="text-xl font-bold mb-4">Room Info</h2>
            <div className="bg-gray-700/50 p-3 rounded-lg mb-4">
             <p className="text-sm text-gray-400">Room ID:</p>
             <p className="font-mono text-yellow-400 text-sm truncate" title={roomId}>{roomId}</p>
           </div>
-           <div className="mt-6"><p className="text-gray-400 text-sm">Your Role:</p><p className="font-bold text-lg text-white capitalize">{roomDetails.interviewer === user?._id ? "Interviewer (Host)" : "Candidate"}</p></div>
+           <div className="mt-6"><p className="text-gray-400 text-sm">Your Role:</p><p className="font-bold text-lg text-white capitalize">{isHost ? "Interviewer (Host)" : "Candidate"}</p></div>
            <div className="mt-4"><p className="text-gray-400 text-sm">Status:</p><p className={`font-bold ${isApproved ? "text-green-400" : "text-yellow-400"}`}>{isApproved ? "🟢 Access Granted" : "🟡 Waiting for host..."}</p></div>
+           
+           {/* End Interview Button — Host Only */}
+           {isHost && isApproved && (
+             <div className="mt-auto pt-6">
+               <button 
+                 onClick={handleEndInterview}
+                 className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+               >
+                 🛑 End Interview
+               </button>
+             </div>
+           )}
         </div>
 
         {/* RIGHT PANEL */}
@@ -231,12 +300,14 @@ function Room() {
                         socket={socketRef.current} 
                         roomId={roomId} 
                         language={language}
+                        initialCode={initialCode}
                         onCodeChange={handleLocalCodeChange} 
                      />
                  ) : (
                      <Whiteboard 
                         socket={socketRef.current}
                         roomId={roomId}
+                        initialElements={initialWhiteboard}
                      />
                  )}
                </div>

@@ -5,6 +5,9 @@ import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext'; // 1. Import the Context Hook
 
 function Login() {
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,6 +20,10 @@ function Login() {
     setError("");
 
     try {
+      if (isRegistering) {
+        await authService.register({ fullName, email, username, password });
+      }
+      
       const response = await authService.login({ email, password });
       
       console.log("Login Success!", response);
@@ -29,7 +36,7 @@ function Login() {
       
     } catch (err) {
       console.error(err);
-      setError("Invalid email or password");
+      setError(err.response?.data?.message || (isRegistering ? "Registration failed" : "Invalid email or password"));
     }
   };
 
@@ -47,7 +54,7 @@ function Login() {
         
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900 dark:text-white">
-            Sign in to your account
+            {isRegistering ? "Create your account" : "Sign in to your account"}
           </h2>
         </div>
 
@@ -57,6 +64,52 @@ function Login() {
           <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl px-6 py-12 shadow-xl ring-1 ring-gray-900/5 dark:ring-white/10 rounded-2xl sm:px-12">
             
             <form className="space-y-6" onSubmit={handleSubmit}>
+              
+              {/* Show Error */}
+              {error && (
+                <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm border border-red-200">
+                  {error}
+                </div>
+              )}
+
+              {/* Full Name & Username for Registration */}
+              {isRegistering && (
+                <>
+                  <div>
+                    <label htmlFor="fullName" className="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-200">
+                      Full Name
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        id="fullName"
+                        name="fullName"
+                        type="text"
+                        required={isRegistering}
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-900 dark:text-white dark:ring-gray-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-200">
+                      Username
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        required={isRegistering}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-900 dark:text-white dark:ring-gray-700"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               
               {/* Email */}
               <div>
@@ -115,13 +168,13 @@ function Login() {
                 </div>
               </div>
 
-              {/* Sign In Button */}
+              {/* Submit Button */}
               <div>
                 <button
                   type="submit"
                   className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                 >
-                  Sign in
+                  {isRegistering ? "Register" : "Sign in"}
                 </button>
               </div>
             </form>
@@ -180,6 +233,21 @@ function Login() {
                 </a>
               </div>
             </div>
+
+            {/* Toggle Login/Register */}
+            <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
+              {isRegistering ? "Already a member?" : "Not a member?"}{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegistering(!isRegistering);
+                  setError("");
+                }}
+                className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+              >
+                {isRegistering ? "Sign in to your account" : "Register now"}
+              </button>
+            </p>
             
           </div>
 
