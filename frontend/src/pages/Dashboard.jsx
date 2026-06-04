@@ -43,6 +43,19 @@ function Dashboard() {
     }
   };
 
+  const handleDeleteRoom = async (roomId) => {
+    if (!window.confirm("Are you sure you want to delete this interview history?")) {
+      return;
+    }
+    try {
+      await roomService.deleteRoom(roomId);
+      setRooms(rooms.filter(room => (room.roomId || room._id) !== roomId));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete room.");
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -111,12 +124,23 @@ function Dashboard() {
                     <p className="text-sm leading-6 text-gray-900 dark:text-gray-300 capitalize">
                       Status: <span className={room.status === 'active' ? 'text-green-500 font-bold' : 'text-gray-500'}>{room.status}</span>
                     </p>
-                     <button 
-                        onClick={() => navigate(`/room/${room.roomId || room._id}`)}
-                        className="mt-1 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                     >
-                       Rejoin Room &rarr;
-                     </button>
+                     <div className="mt-1 flex items-center gap-x-4">
+                       <button 
+                          onClick={() => navigate(`/room/${room.roomId || room._id}`)}
+                          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                       >
+                         {room.status === 'completed' ? 'View Results' : 'Rejoin Room'}
+                       </button>
+                       {room.status === 'completed' && (
+                         <button 
+                            onClick={() => handleDeleteRoom(room.roomId || room._id)}
+                            className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                            title="Delete Interview"
+                         >
+                           Delete
+                         </button>
+                       )}
+                     </div>
                   </div>
                 </li>
               ))}

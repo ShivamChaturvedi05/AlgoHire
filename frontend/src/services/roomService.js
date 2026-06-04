@@ -32,6 +32,16 @@ const roomService = {
       console.error("Error fetching history:", error);
       throw error;
     }
+  },
+
+  deleteRoom: async (roomId) => {
+    try {
+      const response = await api.delete(`/rooms/${roomId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting room:", error);
+      throw error;
+    }
   }
 };
 

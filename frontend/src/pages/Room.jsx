@@ -48,7 +48,18 @@ function Room() {
     const checkRoom = async () => {
       try {
         const response = await roomService.getRoom(roomId);
-        setRoomDetails(response.data || response);
+        const details = response.data || response;
+        setRoomDetails(details);
+
+        if (details.status === 'completed') {
+          // Bypass join screen for completed rooms (Read-Only Mode)
+          setHasJoined(true);
+          setIsApproved(true);
+          setInitialCode(details.codeState);
+          codeValueRef.current = details.codeState || "// No code saved";
+          setLanguage(details.language || "javascript");
+          setInitialWhiteboard(details.whiteboardState);
+        }
       } catch (err) {
         console.error("Room check failed:", err);
         alert("Room not found.");
@@ -187,17 +198,35 @@ function Room() {
 
   if (!roomDetails) return <div className="bg-gray-900 h-screen text-white flex items-center justify-center">Loading Room...</div>;
 
-  if (!user && !hasJoined) {
+  if (!hasJoined && roomDetails?.status !== 'completed') {
     return (
-      <div className="flex flex-col h-screen bg-gray-900 text-white items-center justify-center">
-        <div className="bg-gray-800 p-8 rounded-xl shadow-2xl border border-gray-700 w-full max-w-md">
-           <h2 className="text-2xl font-bold mb-2 text-center">Join Interview</h2>
-           <input type="text" placeholder="Your Name" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white mb-4" value={guestName} onChange={(e) => setGuestName(e.target.value)} />
-           <button onClick={() => joinRoom(guestName, uuidv4())} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg">Join Room</button>
+      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+        <div className="p-8 bg-gray-800 rounded-lg shadow-xl w-96 text-center">
+          <h2 className="text-2xl font-bold mb-6">Join Interview</h2>
+          {!user ? (
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              className="w-full px-4 py-2 mb-4 bg-gray-700 rounded border border-gray-600 text-white focus:outline-none focus:border-indigo-500"
+            />
+          ) : (
+            <p className="mb-4 text-gray-300">Joining as <strong>{user.fullName}</strong></p>
+          )}
+          <button
+            onClick={() => joinRoom(user ? user.fullName : guestName, user ? user._id : 'guest')}
+            disabled={!user && !guestName.trim()}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded font-semibold transition"
+          >
+            Join Room
+          </button>
         </div>
       </div>
     );
   }
+
+  const isCompleted = roomDetails?.status === 'completed';
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white relative">
@@ -224,19 +253,24 @@ function Room() {
             <p className="font-mono text-yellow-400 text-sm truncate" title={roomId}>{roomId}</p>
           </div>
            <div className="mt-6"><p className="text-gray-400 text-sm">Your Role:</p><p className="font-bold text-lg text-white capitalize">{isHost ? "Interviewer (Host)" : "Candidate"}</p></div>
-           <div className="mt-4"><p className="text-gray-400 text-sm">Status:</p><p className={`font-bold ${isApproved ? "text-green-400" : "text-yellow-400"}`}>{isApproved ? "🟢 Access Granted" : "🟡 Waiting for host..."}</p></div>
            
-           {/* End Interview Button — Host Only */}
-           {isHost && isApproved && (
-             <div className="mt-auto pt-6">
-               <button 
-                 onClick={handleEndInterview}
-                 className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-               >
-                 🛑 End Interview
-               </button>
+           <h3 className="text-sm font-semibold text-gray-400 mt-6 mb-2 px-2 uppercase tracking-wider">Controls</h3>
+           <div className="space-y-3">
+             <div className="p-3 bg-gray-800 rounded text-sm">
+                <p className="text-gray-300 mb-1">Status</p>
+                <p className={`font-bold capitalize ${isCompleted ? 'text-red-400' : 'text-green-400'}`}>
+                   {isCompleted ? 'Completed' : 'Active'}
+                </p>
              </div>
-           )}
+             {isHost && !isCompleted && (
+                <button 
+                   onClick={handleEndInterview}
+                   className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition"
+                >
+                   🛑 End Interview
+                </button>
+             )}
+           </div>
         </div>
 
         {/* RIGHT PANEL */}
@@ -263,38 +297,43 @@ function Room() {
                      </button>
                  </div>
 
-                 {/* RIGHT: TOOLS (Only show if Code tab is active) */}
+                 {/* RIGHT: TOOLS */}
                  {activeTab === "code" && (
                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-500 mr-2">
-                           .{language === 'cpp' ? 'cpp' : language === 'python' ? 'py' : language === 'java' ? 'java' : 'js'}
-                        </span>
                         <select 
                           value={language}
                           onChange={handleLanguageChange}
-                          className="bg-gray-800 text-gray-300 text-xs rounded border border-gray-600 px-2 py-1 outline-none focus:border-indigo-500"
+                          disabled={isCompleted}
+                          className={`bg-gray-800 text-gray-300 text-xs rounded border border-gray-600 px-2 py-1 outline-none focus:border-indigo-500 ${isCompleted ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {LANGUAGES.map(lang => (
                             <option key={lang.value} value={lang.value}>{lang.name}</option>
                           ))}
                         </select>
-                        <button 
-                            onClick={runCode}
-                            disabled={isCompiling}
-                            className={`text-xs font-bold px-4 py-1.5 rounded transition-all flex items-center gap-2 ${
-                                isCompiling 
-                                ? "bg-gray-700 text-gray-400 cursor-not-allowed" 
-                                : "bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20"
-                            }`}
-                        >
-                            {isCompiling ? "Running..." : "▶ Run Code"}
-                        </button>
+                        {!isCompleted && (
+                          <button 
+                              onClick={runCode}
+                              disabled={isCompiling}
+                              className={`text-xs font-bold px-4 py-1.5 rounded transition-all flex items-center gap-2 ${
+                                  isCompiling 
+                                  ? "bg-gray-700 text-gray-400 cursor-not-allowed" 
+                                  : "bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20"
+                              }`}
+                          >
+                              {isCompiling ? "Running..." : "▶ Run Code"}
+                          </button>
+                        )}
                      </div>
                  )}
                </div>
 
                {/* --- MAIN CONTENT AREA --- */}
                <div className="flex-1 overflow-hidden relative">
+                 {isCompleted && (
+                   <div className="absolute top-0 left-0 right-0 z-50 bg-red-600 text-white text-center py-1 text-sm font-bold shadow-md">
+                      READ-ONLY MODE: This interview has been completed.
+                   </div>
+                 )}
                  {activeTab === "code" ? (
                      <CodeEditor 
                         socket={socketRef.current} 
