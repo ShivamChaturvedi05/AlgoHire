@@ -51,7 +51,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
     const user = await User.findOne({
-        $or: [{ username }, { email }]
+        $or: [{ username: username?.toLowerCase() }, { email }]
     });
 
     if (!user) {

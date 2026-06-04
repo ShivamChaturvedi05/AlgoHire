@@ -3,23 +3,30 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Interview } from "../models/interview.model.js";
 import { v4 as uuidv4 } from 'uuid';
+import { initRoom } from "../socket/roomStore.js";
 
 const createRoom = asyncHandler(async (req, res) => {
     const interviewerId = req.user._id;
 
     const roomId = uuidv4();
 
+    const defaultCode = "// Start coding here...";
+    const defaultLanguage = "javascript";
+
     const room = await Interview.create({
         roomId,
         interviewer: interviewerId,
         status: "active",
-        codeState: "// Start coding here...",
-        language: "javascript"
+        codeState: defaultCode,
+        language: defaultLanguage
     });
 
     if (!room) {
         throw new ApiError(500, "Something went wrong while creating the room");
     }
+
+    // Seed the room state into Redis for real-time access
+    await initRoom(roomId, { codeState: defaultCode, language: defaultLanguage });
 
     return res.status(201).json(
         new ApiResponse(200, room, "Interview room created successfully")
