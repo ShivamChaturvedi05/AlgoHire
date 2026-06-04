@@ -6,6 +6,7 @@ import CodeEditor from '../components/room/CodeEditor';
 import OutputConsole from '../components/room/OutputConsole';
 import Whiteboard from '../components/room/Whiteboard';
 import { useAuth } from '../context/AuthContext';
+import useTheme from '../hooks/useTheme';
 import roomService from '../services/roomService';
 import compilerService from '../services/compilerService'; 
 import { v4 as uuidv4 } from 'uuid';
@@ -21,6 +22,7 @@ function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth(); 
+  const [theme] = useTheme();
   const socketRef = useRef(null);
   
   const [isConnected, setIsConnected] = useState(false);
@@ -186,22 +188,22 @@ function Room() {
 
   if (interviewEnded) {
     return (
-      <div className="flex flex-col h-screen bg-gray-900 text-white items-center justify-center">
+      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-4">✅</div>
           <h2 className="text-2xl font-bold mb-2">Interview Ended</h2>
-          <p className="text-gray-400">The interview has been saved. Redirecting to dashboard...</p>
+          <p className="text-gray-500 dark:text-gray-400">The interview has been saved. Redirecting to dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (!roomDetails) return <div className="bg-gray-900 h-screen text-white flex items-center justify-center">Loading Room...</div>;
+  if (!roomDetails) return <div className="bg-gray-50 dark:bg-gray-900 h-screen text-gray-900 dark:text-white flex items-center justify-center">Loading Room...</div>;
 
   if (!hasJoined && roomDetails?.status !== 'completed') {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
-        <div className="p-8 bg-gray-800 rounded-lg shadow-xl w-96 text-center">
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
+        <div className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96 text-center border border-gray-200 dark:border-none">
           <h2 className="text-2xl font-bold mb-6">Join Interview</h2>
           {!user ? (
             <input
@@ -209,10 +211,10 @@ function Room() {
               placeholder="Enter your name"
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
-              className="w-full px-4 py-2 mb-4 bg-gray-700 rounded border border-gray-600 text-white focus:outline-none focus:border-indigo-500"
+              className="w-full px-4 py-2 mb-4 bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500"
             />
           ) : (
-            <p className="mb-4 text-gray-300">Joining as <strong>{user.fullName}</strong></p>
+            <p className="mb-4 text-gray-600 dark:text-gray-300">Joining as <strong>{user.fullName}</strong></p>
           )}
           <button
             onClick={() => joinRoom(user ? user.fullName : guestName, user ? user._id : 'guest')}
@@ -229,11 +231,11 @@ function Room() {
   const isCompleted = roomDetails?.status === 'completed';
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white relative">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white relative transition-colors duration-300">
       
       {pendingCandidate && (
-        <div className="fixed top-24 right-6 bg-gray-800 border border-indigo-500 shadow-2xl p-4 rounded-lg z-50 animate-bounce max-w-sm">
-            <h3 className="font-bold text-white mb-1">👤 Candidate Waiting</h3>
+        <div className="fixed top-24 right-6 bg-white dark:bg-gray-800 border border-indigo-500 shadow-2xl p-4 rounded-lg z-50 animate-bounce max-w-sm">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-1">👤 Candidate Waiting</h3>
             <div className="flex gap-3 mt-4">
                 <button onClick={handleAdmit} className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded text-sm font-bold">Admit</button>
                 <button onClick={() => setPendingCandidate(null)} className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded text-sm font-bold">Deny</button>
@@ -246,26 +248,29 @@ function Room() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* LEFT PANEL */}
-        <div className="w-1/4 bg-gray-800 border-r border-gray-700 p-4 hidden md:flex md:flex-col">
+        <div className="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 hidden md:flex md:flex-col shadow-sm z-10">
            <h2 className="text-xl font-bold mb-4">Room Info</h2>
-           <div className="bg-gray-700/50 p-3 rounded-lg mb-4">
-            <p className="text-sm text-gray-400">Room ID:</p>
-            <p className="font-mono text-yellow-400 text-sm truncate" title={roomId}>{roomId}</p>
+           <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Room ID:</p>
+            <p className="font-mono text-amber-600 dark:text-yellow-400 text-sm truncate" title={roomId}>{roomId}</p>
           </div>
-           <div className="mt-6"><p className="text-gray-400 text-sm">Your Role:</p><p className="font-bold text-lg text-white capitalize">{isHost ? "Interviewer (Host)" : "Candidate"}</p></div>
+           <div className="mt-6">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">Your Role:</p>
+              <p className="font-bold text-lg text-gray-900 dark:text-white capitalize">{isHost ? "Interviewer (Host)" : "Candidate"}</p>
+           </div>
            
-           <h3 className="text-sm font-semibold text-gray-400 mt-6 mb-2 px-2 uppercase tracking-wider">Controls</h3>
+           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-6 mb-2 px-2 uppercase tracking-wider">Controls</h3>
            <div className="space-y-3">
-             <div className="p-3 bg-gray-800 rounded text-sm">
-                <p className="text-gray-300 mb-1">Status</p>
-                <p className={`font-bold capitalize ${isCompleted ? 'text-red-400' : 'text-green-400'}`}>
+             <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-transparent rounded text-sm">
+                <p className="text-gray-600 dark:text-gray-300 mb-1">Status</p>
+                <p className={`font-bold capitalize ${isCompleted ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                    {isCompleted ? 'Completed' : 'Active'}
                 </p>
              </div>
              {isHost && !isCompleted && (
                 <button 
                    onClick={handleEndInterview}
-                   className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition"
+                   className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition shadow-sm"
                 >
                    🛑 End Interview
                 </button>
@@ -274,24 +279,24 @@ function Room() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="flex-1 bg-[#1e1e1e] flex flex-col min-w-0">
+        <div className="flex-1 bg-white dark:bg-[#1e1e1e] flex flex-col min-w-0">
            
            {isApproved ? (
              <>
                {/* --- HEADER: TABS + TOOLS --- */}
-               <div className="bg-gray-900 border-b border-gray-700 p-2 flex justify-between items-center px-4 shrink-0 h-12">
+               <div className="bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-2 flex justify-between items-center px-4 shrink-0 h-12">
                  
                  {/* LEFT: TABS */}
                  <div className="flex gap-4">
                      <button 
                        onClick={() => setActiveTab("code")}
-                       className={`text-sm font-medium transition-colors ${activeTab === "code" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-gray-400 hover:text-gray-200"}`}
+                       className={`text-sm font-medium transition-colors ${activeTab === "code" ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400" : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"}`}
                      >
                        &lt;/&gt; Code
                      </button>
                      <button 
                        onClick={() => setActiveTab("board")}
-                       className={`text-sm font-medium transition-colors ${activeTab === "board" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-gray-400 hover:text-gray-200"}`}
+                       className={`text-sm font-medium transition-colors ${activeTab === "board" ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400" : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"}`}
                      >
                        🎨 Whiteboard
                      </button>
@@ -304,7 +309,7 @@ function Room() {
                           value={language}
                           onChange={handleLanguageChange}
                           disabled={isCompleted}
-                          className={`bg-gray-800 text-gray-300 text-xs rounded border border-gray-600 px-2 py-1 outline-none focus:border-indigo-500 ${isCompleted ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 text-xs rounded border border-gray-300 dark:border-gray-600 px-2 py-1 outline-none focus:border-indigo-500 ${isCompleted ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {LANGUAGES.map(lang => (
                             <option key={lang.value} value={lang.value}>{lang.name}</option>
@@ -316,8 +321,8 @@ function Room() {
                               disabled={isCompiling}
                               className={`text-xs font-bold px-4 py-1.5 rounded transition-all flex items-center gap-2 ${
                                   isCompiling 
-                                  ? "bg-gray-700 text-gray-400 cursor-not-allowed" 
-                                  : "bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20"
+                                  ? "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" 
+                                  : "bg-green-600 hover:bg-green-500 text-white shadow shadow-green-900/20"
                               }`}
                           >
                               {isCompiling ? "Running..." : "▶ Run Code"}
@@ -334,21 +339,24 @@ function Room() {
                       READ-ONLY MODE: This interview has been completed.
                    </div>
                  )}
-                 {activeTab === "code" ? (
+                 <div className={`h-full w-full ${activeTab === 'code' ? 'block' : 'hidden'}`}>
                      <CodeEditor 
                         socket={socketRef.current} 
                         roomId={roomId} 
                         language={language}
                         initialCode={initialCode}
                         onCodeChange={handleLocalCodeChange} 
+                        theme={theme}
                      />
-                 ) : (
+                 </div>
+                 <div className={`h-full w-full ${activeTab === 'board' ? 'block' : 'hidden'}`}>
                      <Whiteboard 
                         socket={socketRef.current}
                         roomId={roomId}
                         initialElements={initialWhiteboard}
+                        theme={theme}
                      />
-                 )}
+                 </div>
                </div>
 
                {/* --- OUTPUT CONSOLE (Only for Code Tab) --- */}

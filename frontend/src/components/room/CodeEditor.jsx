@@ -1,7 +1,7 @@
 import { useEffect, useRef, memo } from "react";
 import Editor from "@monaco-editor/react";
 
-const CodeEditor = memo(({ socket, roomId, language, initialCode, onCodeChange }) => {
+const CodeEditor = memo(({ socket, roomId, language, initialCode, onCodeChange, theme }) => {
   const editorRef = useRef(null);
   const isRemoteUpdate = useRef(false);
   const codeSyncTimer = useRef(null);
@@ -100,7 +100,7 @@ const CodeEditor = memo(({ socket, roomId, language, initialCode, onCodeChange }
       <Editor
         height="100%"
         language={language}
-        theme="vs-dark"
+        theme={theme === 'dark' ? 'vs-dark' : 'light'}
         defaultValue={initialCode || "// Start coding here..."}
         onMount={handleEditorDidMount}
         options={{

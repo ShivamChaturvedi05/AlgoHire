@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"; 
 import { Excalidraw } from "@excalidraw/excalidraw";
 
-const Whiteboard = ({ socket, roomId, initialElements }) => {
+const Whiteboard = ({ socket, roomId, initialElements, theme }) => {
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
 
   const isRemoteUpdate = useRef(false);
@@ -59,9 +59,9 @@ const Whiteboard = ({ socket, roomId, initialElements }) => {
   };
 
   return (
-    <div className="h-full w-full bg-gray-900">
+    <div className="h-full w-full bg-white dark:bg-gray-900">
       <Excalidraw
-        theme="dark"
+        theme={theme === 'dark' ? 'dark' : 'light'}
         onChange={handleChange}
         excalidrawAPI={(api) => setExcalidrawAPI(api)}
         UIOptions={{

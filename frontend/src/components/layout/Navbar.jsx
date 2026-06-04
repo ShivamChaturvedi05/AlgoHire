@@ -9,8 +9,8 @@ function Navbar({ position = "absolute" }) { // <--- 1. Add Prop with default "a
   // absolute: Floating, transparent (for Landing Page)
   // static: Block element, solid background (for Room/App)
   const headerClass = position === "static" 
-    ? "bg-gray-900 border-b border-gray-800 z-50" 
-    : "absolute inset-x-0 top-0 z-50";
+    ? "bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-50 transition-colors duration-300" 
+    : "absolute inset-x-0 top-0 z-50 transition-colors duration-300";
 
   return (
     <header className={headerClass}>
