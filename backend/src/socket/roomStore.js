@@ -31,7 +31,8 @@ export const getRoom = async (roomId) => {
     return {
         codeState: data.codeState || "",
         language: data.language || "javascript",
-        whiteboardState: data.whiteboardState ? JSON.parse(data.whiteboardState) : []
+        whiteboardState: data.whiteboardState ? JSON.parse(data.whiteboardState) : [],
+        candidateName: data.candidateName || null
     };
 };
 
@@ -66,4 +67,12 @@ export const deleteRoom = async (roomId) => {
     const key = ROOM_PREFIX + roomId;
     await redis.del(key);
     console.log(`🗑️ Room state removed from Redis: ${roomId}`);
+};
+
+/**
+ * Update the candidate name for a room.
+ */
+export const updateCandidateName = async (roomId, candidateName) => {
+    const key = ROOM_PREFIX + roomId;
+    await redis.hset(key, "candidateName", candidateName);
 };

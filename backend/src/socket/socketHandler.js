@@ -7,7 +7,7 @@ const setupSocket = (io) => {
     io.on("connection", (socket) => {
         console.log("User connected:", socket.id);
 
-        socket.on("join-room", async ({ roomId, userId, role }) => {
+        socket.on("join-room", async ({ roomId, userId, username, role }) => {
             socket.join(roomId);
 
             if (role === "interviewer") {
@@ -20,7 +20,8 @@ const setupSocket = (io) => {
                 if (interviewerSocketId) {
                     io.to(interviewerSocketId).emit("user-waiting", {
                         userId,
-                        socketId: socket.id
+                        socketId: socket.id,
+                        username
                     });
                 } else {
                     console.log("No interviewer found for room:", roomId);
@@ -39,8 +40,16 @@ const setupSocket = (io) => {
             }
         });
 
-        socket.on("admit-candidate", ({ socketId }) => {
+        socket.on("admit-candidate", async ({ socketId, roomId, username }) => {
             io.to(socketId).emit("room-joined", { status: "approved" });
+            io.to(roomId).emit("candidate-joined", { username });
+            try {
+                if (username) {
+                    await roomStore.updateCandidateName(roomId, username);
+                }
+            } catch (err) {
+                console.error("Failed to update candidate name in Redis:", err.message);
+            }
         });
 
         // Broadcast incremental changes to other users (real-time collab)
@@ -92,6 +101,9 @@ const setupSocket = (io) => {
                     updateData.codeState = state.codeState;
                     updateData.language = state.language;
                     updateData.whiteboardState = state.whiteboardState;
+                    if (state.candidateName) {
+                        updateData.candidateName = state.candidateName;
+                    }
                 }
 
                 await Interview.findOneAndUpdate(
