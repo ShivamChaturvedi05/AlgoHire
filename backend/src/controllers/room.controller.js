@@ -41,9 +41,6 @@ const getRoom = asyncHandler(async (req, res) => {
     if (!room) {
         throw new ApiError(404, "Room not found or invalid ID");
     }
-    if (room.status === "completed") {
-        throw new ApiError(403, "This interview has ended.");
-    }
 
     return res.status(200).json(
         new ApiResponse(200, room, "Room data fetched successfully")
@@ -77,4 +74,18 @@ const getUserInterviews = asyncHandler(async (req, res) => {
     );
 });
 
-export { createRoom, getRoom, deactivateRoom, getUserInterviews };
+const deleteRoom = asyncHandler(async (req, res) => {
+    const { roomId } = req.params;
+
+    const room = await Interview.findOneAndDelete({ roomId, interviewer: req.user._id });
+
+    if (!room) {
+        throw new ApiError(403, "You are not authorized to delete this interview or it doesn't exist");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Interview deleted successfully")
+    );
+});
+
+export { createRoom, getRoom, deactivateRoom, getUserInterviews, deleteRoom };

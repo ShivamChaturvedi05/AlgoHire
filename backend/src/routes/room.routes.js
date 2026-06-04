@@ -2,7 +2,8 @@ import { Router } from "express";
 import { createRoom, 
     getRoom, 
     deactivateRoom, 
-    getUserInterviews } from "../controllers/room.controller.js";
+    getUserInterviews,
+    deleteRoom } from "../controllers/room.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -13,6 +14,6 @@ router.route("/history").get(verifyJWT, getUserInterviews);
 
 router.route("/:roomId/end").post(verifyJWT, deactivateRoom);
 
-router.route("/:roomId").get(getRoom);
+router.route("/:roomId").get(getRoom).delete(verifyJWT, deleteRoom);
 
 export default router;
