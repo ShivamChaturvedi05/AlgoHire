@@ -40,6 +40,15 @@ function Room() {
   const codeValueRef = useRef("// Start coding here...");
 
   const [activeTab, setActiveTab] = useState("code"); 
+  const [leftPanelWidth, setLeftPanelWidth] = useState(300);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    const inviteLink = `${window.location.origin}/room/${roomId}`;
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // --- INITIAL STATE FROM REDIS ---
   const [initialCode, setInitialCode] = useState(null);
@@ -248,11 +257,19 @@ function Room() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* LEFT PANEL */}
-        <div className="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 hidden md:flex md:flex-col shadow-sm z-10">
+        <div 
+          style={{ width: leftPanelWidth, minWidth: 200, maxWidth: 600 }}
+          className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 hidden md:flex md:flex-col shadow-sm z-10 shrink-0"
+        >
            <h2 className="text-xl font-bold mb-4">Room Info</h2>
            <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg mb-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Room ID:</p>
-            <p className="font-mono text-amber-600 dark:text-yellow-400 text-sm truncate" title={roomId}>{roomId}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Invite Candidate:</p>
+            <button 
+              onClick={handleCopyLink}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 text-sm font-semibold rounded transition-colors"
+            >
+              {copied ? "✅ Copied!" : "📋 Copy Invite Link"}
+            </button>
           </div>
            <div className="mt-6">
               <p className="text-gray-500 dark:text-gray-400 text-sm">Your Role:</p>
@@ -277,6 +294,33 @@ function Room() {
              )}
            </div>
         </div>
+
+        {/* RESIZER HANDLE */}
+        <div 
+          className="w-1 bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 cursor-col-resize z-20 hidden md:block transition-colors shrink-0"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startWidth = leftPanelWidth;
+            
+            const handleMouseMove = (moveEvent) => {
+               const newWidth = startWidth + (moveEvent.clientX - startX);
+               if (newWidth >= 200 && newWidth <= 600) {
+                  setLeftPanelWidth(newWidth);
+               }
+            };
+            
+            const handleMouseUp = () => {
+               document.removeEventListener('mousemove', handleMouseMove);
+               document.removeEventListener('mouseup', handleMouseUp);
+               document.body.style.cursor = 'default';
+            };
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'col-resize';
+          }}
+        />
 
         {/* RIGHT PANEL */}
         <div className="flex-1 bg-white dark:bg-[#1e1e1e] flex flex-col min-w-0">

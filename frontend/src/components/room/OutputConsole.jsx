@@ -1,6 +1,40 @@
+import { useState } from 'react';
+
 const OutputConsole = ({ output, isError, isLoading, onClose }) => {
+  const [height, setHeight] = useState(192);
+
   return (
-    <div className="h-48 bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-gray-700 flex flex-col transition-colors duration-300">
+    <div 
+      style={{ height: height, minHeight: 100, maxHeight: 600 }} 
+      className="bg-white dark:bg-[#1e1e1e] flex flex-col transition-colors duration-300 shrink-0"
+    >
+      {/* RESIZER HANDLE */}
+      <div 
+        className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 cursor-row-resize shrink-0 transition-colors"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const startY = e.clientY;
+          const startHeight = height;
+          
+          const handleMouseMove = (moveEvent) => {
+             const newHeight = startHeight - (moveEvent.clientY - startY);
+             if (newHeight >= 100 && newHeight <= 600) {
+                setHeight(newHeight);
+             }
+          };
+          
+          const handleMouseUp = () => {
+             document.removeEventListener('mousemove', handleMouseMove);
+             document.removeEventListener('mouseup', handleMouseUp);
+             document.body.style.cursor = 'default';
+          };
+          
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+          document.body.style.cursor = 'row-resize';
+        }}
+      />
+
       {/* Header */}
       <div className="flex justify-between items-center px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Console Output</span>
