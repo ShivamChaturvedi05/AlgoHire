@@ -5,10 +5,12 @@ import Navbar from '../components/layout/Navbar';
 import CodeEditor from '../components/room/CodeEditor';
 import OutputConsole from '../components/room/OutputConsole';
 import Whiteboard from '../components/room/Whiteboard';
+import TestConsole from '../components/room/TestConsole';
 import { useAuth } from '../context/AuthContext';
 import useTheme from '../hooks/useTheme';
 import roomService from '../services/roomService';
 import compilerService from '../services/compilerService'; 
+import questionService from '../services/questionService';
 import { v4 as uuidv4 } from 'uuid';
 
 const LANGUAGES = [
@@ -43,6 +45,16 @@ function Room() {
   const [activeTab, setActiveTab] = useState("code"); 
   const [leftPanelWidth, setLeftPanelWidth] = useState(300);
   const [copied, setCopied] = useState(false);
+  const [leftTab, setLeftTab] = useState("info");
+  const [activeQuestion, setActiveQuestion] = useState(null);
+  const [questionBank, setQuestionBank] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+
+  // --- TEST STATES ---
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResults, setTestResults] = useState(null);
+  const [testConsoleOpen, setTestConsoleOpen] = useState(false);
 
   const handleCopyLink = () => {
     const inviteLink = `${window.location.origin}/room/${roomId}`;
@@ -72,6 +84,9 @@ function Room() {
           setLanguage(details.language || "javascript");
           setInitialWhiteboard(details.whiteboardState);
           setCandidateName(details.candidateName);
+          if (details.activeQuestion) {
+             setActiveQuestion(details.activeQuestion);
+          }
         }
       } catch (err) {
         console.error("Room check failed:", err);
@@ -115,6 +130,9 @@ function Room() {
       if (state.candidateName) {
         setCandidateName(state.candidateName);
       }
+      if (state.activeQuestion) {
+        setActiveQuestion(state.activeQuestion);
+      }
     });
 
     if (isHost) {
@@ -128,6 +146,17 @@ function Room() {
     });
 
     socketRef.current.on('language-update', (newLang) => setLanguage(newLang));
+
+    socketRef.current.on('active-question-update', (question) => {
+      setActiveQuestion(question);
+      setLeftTab("question");
+    });
+
+    socketRef.current.on('test-results', ({ results }) => {
+      setTestResults(results);
+      setTestConsoleOpen(true);
+      setIsConsoleOpen(false);
+    });
 
     // Listen for interview end
     socketRef.current.on('interview-ended', ({ message }) => {
@@ -187,6 +216,32 @@ function Room() {
     }
   };
 
+  // --- RUN TESTS FUNCTION ---
+  const runTests = async () => {
+    if (!activeQuestion || !activeQuestion.testCases || activeQuestion.testCases.length === 0) {
+       alert("No test cases attached to this question.");
+       return;
+    }
+    setTestConsoleOpen(true);
+    setIsConsoleOpen(false);
+    setIsTesting(true);
+    setTestResults(null);
+
+    try {
+        const result = await compilerService.runTests(language, codeValueRef.current, activeQuestion.testCases);
+        const data = result.data || result;
+        setTestResults(data);
+        
+        if (socketRef.current) {
+           socketRef.current.emit("test-results", { roomId, results: data });
+        }
+    } catch (err) {
+        console.error("Test run failed:", err);
+    } finally {
+        setIsTesting(false);
+    }
+  };
+
   const handleLocalCodeChange = useCallback((newCode) => {
       codeValueRef.current = newCode;
   }, []);
@@ -196,6 +251,25 @@ function Room() {
       joinRoom(user.fullName, user._id);
     }
   }, [user, roomDetails]);
+
+  useEffect(() => {
+    const isHost = user && roomDetails && roomDetails.interviewer === user._id;
+    const isCompleted = roomDetails?.status === 'completed';
+    if (isHost && !isCompleted) {
+       setLoadingQuestions(true);
+       questionService.getQuestions()
+         .then(res => setQuestionBank(res.data || []))
+         .catch(err => console.error("Failed to load question bank:", err))
+         .finally(() => setLoadingQuestions(false));
+    }
+  }, [user, roomDetails]);
+
+  const handleSendQuestion = (question) => {
+    if (socketRef.current) {
+       socketRef.current.emit("send-question", { roomId, question });
+    }
+    setShowQuestionModal(false);
+  };
 
   // Cleanup socket on unmount
   useEffect(() => {
@@ -265,6 +339,39 @@ function Room() {
         </div>
       )}
 
+      {/* Question Selection Modal */}
+      {showQuestionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4 shrink-0">
+               <h3 className="text-xl font-bold text-gray-900 dark:text-white">Select Question</h3>
+               <button onClick={() => setShowQuestionModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2">
+               {loadingQuestions ? (
+                  <p className="text-center text-gray-500 py-10">Loading...</p>
+               ) : questionBank.length === 0 ? (
+                  <div className="text-center text-gray-500 py-10">
+                     <p>Your question bank is empty.</p>
+                     <p className="text-sm mt-2">Go to the Dashboard to create questions.</p>
+                  </div>
+               ) : (
+                  <ul className="space-y-3">
+                     {questionBank.map(q => (
+                        <li key={q._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-indigo-500 transition cursor-pointer" onClick={() => handleSendQuestion({title: q.title, description: q.description, testCases: q.testCases})}>
+                           <h4 className="font-bold text-gray-900 dark:text-white">{q.title}</h4>
+                           <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1 whitespace-pre-wrap">{q.description}</p>
+                           <button className="mt-3 text-sm text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">Send to Candidate &rarr;</button>
+                        </li>
+                     ))}
+                  </ul>
+               )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Navbar position="static" />
       
       <div className="flex flex-1 overflow-hidden">
@@ -274,47 +381,83 @@ function Room() {
           style={{ width: leftPanelWidth, minWidth: 200, maxWidth: 600 }}
           className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 hidden md:flex md:flex-col shadow-sm z-10 shrink-0"
         >
-           <h2 className="text-xl font-bold mb-4">Room Info</h2>
-           {isHost && !isCompleted && (
-             <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg mb-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Invite Candidate:</p>
-              <button 
-                onClick={handleCopyLink}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 text-sm font-semibold rounded transition-colors"
-              >
-                {copied ? "✅ Copied!" : "📋 Copy Invite Link"}
-              </button>
-            </div>
-           )}
-           <div className="mt-6">
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Your Role:</p>
-              <p className="font-bold text-lg text-gray-900 dark:text-white capitalize">{isHost ? "Interviewer (Host)" : "Candidate"}</p>
+           {/* LEFT PANEL TABS */}
+           <div className="flex space-x-2 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 shrink-0">
+              <button onClick={() => setLeftTab('info')} className={`text-sm font-bold flex-1 py-1 rounded transition-colors ${leftTab === 'info' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>Info</button>
+              <button onClick={() => setLeftTab('question')} className={`text-sm font-bold flex-1 py-1 rounded transition-colors ${leftTab === 'question' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>Question</button>
            </div>
 
-           {(isHost && candidateName) && (
-              <div className="mt-4 bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800/30">
-                 <p className="text-gray-500 dark:text-gray-400 text-sm">Joined Candidate:</p>
-                 <p className="font-bold text-gray-900 dark:text-white truncate" title={candidateName}>{candidateName}</p>
+           {leftTab === 'info' ? (
+              <div className="flex-1 overflow-y-auto pr-2">
+                 <h2 className="text-xl font-bold mb-4">Room Info</h2>
+                 {isHost && !isCompleted && (
+                   <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg mb-4">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Invite Candidate:</p>
+                    <button 
+                      onClick={handleCopyLink}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 text-sm font-semibold rounded transition-colors"
+                    >
+                      {copied ? "✅ Copied!" : "📋 Copy Invite Link"}
+                    </button>
+                  </div>
+                 )}
+                 <div className="mt-6">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">Your Role:</p>
+                    <p className="font-bold text-lg text-gray-900 dark:text-white capitalize">{isHost ? "Interviewer (Host)" : "Candidate"}</p>
+                 </div>
+
+                 {(isHost && candidateName) && (
+                    <div className="mt-4 bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800/30">
+                       <p className="text-gray-500 dark:text-gray-400 text-sm">Joined Candidate:</p>
+                       <p className="font-bold text-gray-900 dark:text-white truncate" title={candidateName}>{candidateName}</p>
+                    </div>
+                 )}
+                 
+                 <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-6 mb-2 px-2 uppercase tracking-wider">Controls</h3>
+                 <div className="space-y-3">
+                   <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-transparent rounded text-sm">
+                      <p className="text-gray-600 dark:text-gray-300 mb-1">Status</p>
+                      <p className={`font-bold capitalize ${isCompleted ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                         {isCompleted ? 'Completed' : 'Active'}
+                      </p>
+                   </div>
+                   {isHost && !isCompleted && (
+                      <button 
+                         onClick={handleEndInterview}
+                         className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition shadow-sm"
+                      >
+                         🛑 End Interview
+                      </button>
+                   )}
+                 </div>
+              </div>
+           ) : (
+              <div className="flex-1 overflow-y-auto pr-2 flex flex-col">
+                 <h2 className="text-xl font-bold mb-4">Interview Question</h2>
+                 
+                 {isHost && !isCompleted && (
+                    <button 
+                       onClick={() => setShowQuestionModal(true)}
+                       className="w-full mb-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-semibold text-sm transition shrink-0"
+                    >
+                       Select from Question Bank
+                    </button>
+                 )}
+
+                 {activeQuestion ? (
+                    <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                       <h3 className="font-bold text-gray-900 dark:text-white mb-2">{activeQuestion.title}</h3>
+                       <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans break-words">{activeQuestion.description}</pre>
+                    </div>
+                 ) : (
+                    <div className="text-center text-gray-500 dark:text-gray-400 mt-10">
+                       <p className="text-4xl mb-2">📄</p>
+                       <p className="text-sm">No active question.</p>
+                       {isHost && !isCompleted && <p className="text-xs mt-1">Select one from your bank to send to the candidate.</p>}
+                    </div>
+                 )}
               </div>
            )}
-           
-           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-6 mb-2 px-2 uppercase tracking-wider">Controls</h3>
-           <div className="space-y-3">
-             <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-transparent rounded text-sm">
-                <p className="text-gray-600 dark:text-gray-300 mb-1">Status</p>
-                <p className={`font-bold capitalize ${isCompleted ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                   {isCompleted ? 'Completed' : 'Active'}
-                </p>
-             </div>
-             {isHost && !isCompleted && (
-                <button 
-                   onClick={handleEndInterview}
-                   className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition shadow-sm"
-                >
-                   🛑 End Interview
-                </button>
-             )}
-           </div>
         </div>
 
         {/* RESIZER HANDLE */}
@@ -384,14 +527,27 @@ function Room() {
                         {!isCompleted && (
                           <button 
                               onClick={runCode}
-                              disabled={isCompiling}
+                              disabled={isCompiling || isTesting}
                               className={`text-xs font-bold px-4 py-1.5 rounded transition-all flex items-center gap-2 ${
-                                  isCompiling 
+                                  (isCompiling || isTesting) 
                                   ? "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" 
                                   : "bg-green-600 hover:bg-green-500 text-white shadow shadow-green-900/20"
                               }`}
                           >
                               {isCompiling ? "Running..." : "▶ Run Code"}
+                          </button>
+                        )}
+                        {!isCompleted && activeQuestion && activeQuestion.testCases?.length > 0 && (
+                          <button 
+                              onClick={runTests}
+                              disabled={isCompiling || isTesting}
+                              className={`text-xs font-bold px-4 py-1.5 rounded transition-all flex items-center gap-2 ${
+                                  (isCompiling || isTesting) 
+                                  ? "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" 
+                                  : "bg-indigo-600 hover:bg-indigo-500 text-white shadow shadow-indigo-900/20"
+                              }`}
+                          >
+                              {isTesting ? "Testing..." : "🧪 Run Tests"}
                           </button>
                         )}
                      </div>
@@ -432,6 +588,15 @@ function Room() {
                     isLoading={isCompiling} 
                     isError={false}
                     onClose={() => setIsConsoleOpen(false)}
+                 />
+               )}
+               {/* --- TEST CONSOLE --- */}
+               {testConsoleOpen && activeTab === "code" && (
+                 <TestConsole 
+                    results={testResults}
+                    isLoading={isTesting}
+                    isHost={isHost}
+                    onClose={() => setTestConsoleOpen(false)}
                  />
                )}
              </>

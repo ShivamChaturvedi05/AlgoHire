@@ -12,6 +12,19 @@ const compilerService = {
       console.error("Execution error:", error);
       throw error;
     }
+  },
+  runTests: async (language, code, testCases) => {
+    try {
+      const response = await api.post('/compiler/run-tests', {
+        language,
+        code,
+        testCases
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Test execution error:", error);
+      throw error;
+    }
   }
 };
 

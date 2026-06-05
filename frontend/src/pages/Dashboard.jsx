@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import roomService from '../services/roomService';
+import QuestionBank from '../components/dashboard/QuestionBank';
 
 function Dashboard() {
+  const [activeTab, setActiveTab] = useState('history');
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -95,61 +97,80 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Room List Section */}
-        <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-xl shadow-lg ring-1 ring-gray-900/5 dark:ring-white/10 overflow-hidden">
-          
-          {loading ? (
-            <div className="p-10 text-center text-gray-500 dark:text-gray-400">Loading your history...</div>
-          ) : error ? (
-             <div className="p-10 text-center text-red-500">{error}</div>
-          ) : rooms.length === 0 ? (
-            <div className="p-10 text-center text-gray-500 dark:text-gray-400">
-              No interviews yet. Click "New Interview" to start!
-            </div>
-          ) : (
-            <ul role="list" className="divide-y divide-gray-100 dark:divide-gray-700">
-              {rooms.map((room) => (
-                <li key={room._id || room.roomId} className="flex justify-between gap-x-6 py-5 px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
-                  <div className="flex min-w-0 gap-x-4">
-                    <div className="min-w-0 flex-auto">
-                      <p className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">
-                        Room ID: {room.roomId || room._id}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300 font-medium">
-                        Candidate: {room.candidateName && room.candidateName !== "Guest Candidate" ? room.candidateName : "Pending/Unknown"}
-                      </p>
-                      <p className="mt-1 truncate text-xs leading-5 text-gray-500 dark:text-gray-400">
-                        Created on {formatDate(room.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
-                    <p className="text-sm leading-6 text-gray-900 dark:text-gray-300 capitalize">
-                      Status: <span className={room.status === 'active' ? 'text-green-500 font-bold' : 'text-gray-500'}>{room.status}</span>
-                    </p>
-                     <div className="mt-1 flex items-center gap-x-4">
-                       <button 
-                          onClick={() => navigate(`/room/${room.roomId || room._id}`)}
-                          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-                       >
-                         {room.status === 'completed' ? 'View Results' : 'Rejoin Room'}
-                       </button>
-                       {room.status === 'completed' && (
-                         <button 
-                            onClick={() => handleDeleteRoom(room.roomId || room._id)}
-                            className="text-xs text-red-600 dark:text-red-400 hover:underline"
-                            title="Delete Interview"
-                         >
-                           Delete
-                         </button>
-                       )}
-                     </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+        {/* TABS */}
+        <div className="flex space-x-6 mb-8 border-b border-gray-200 dark:border-gray-700">
+           <button 
+             onClick={() => setActiveTab('history')} 
+             className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors ${activeTab === 'history' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+           >
+             Interview History
+           </button>
+           <button 
+             onClick={() => setActiveTab('questions')} 
+             className={`pb-3 px-1 text-sm font-bold border-b-2 transition-colors ${activeTab === 'questions' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+           >
+             Question Bank
+           </button>
         </div>
+
+        {activeTab === 'history' ? (
+          <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-xl shadow-lg ring-1 ring-gray-900/5 dark:ring-white/10 overflow-hidden">
+            
+            {loading ? (
+              <div className="p-10 text-center text-gray-500 dark:text-gray-400">Loading your history...</div>
+            ) : error ? (
+               <div className="p-10 text-center text-red-500">{error}</div>
+            ) : rooms.length === 0 ? (
+              <div className="p-10 text-center text-gray-500 dark:text-gray-400">
+                No interviews yet. Click "New Interview" to start!
+              </div>
+            ) : (
+              <ul role="list" className="divide-y divide-gray-100 dark:divide-gray-700">
+                {rooms.map((room) => (
+                  <li key={room._id || room.roomId} className="flex justify-between gap-x-6 py-5 px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition duration-150">
+                    <div className="flex min-w-0 gap-x-4">
+                      <div className="min-w-0 flex-auto">
+                        <p className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">
+                          Room ID: {room.roomId || room._id}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300 font-medium">
+                          Candidate: {room.candidateName && room.candidateName !== "Guest Candidate" ? room.candidateName : "Pending/Unknown"}
+                        </p>
+                        <p className="mt-1 truncate text-xs leading-5 text-gray-500 dark:text-gray-400">
+                          Created on {formatDate(room.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+                      <p className="text-sm leading-6 text-gray-900 dark:text-gray-300 capitalize">
+                        Status: <span className={room.status === 'active' ? 'text-green-500 font-bold' : 'text-gray-500'}>{room.status}</span>
+                      </p>
+                       <div className="mt-1 flex items-center gap-x-4">
+                         <button 
+                            onClick={() => navigate(`/room/${room.roomId || room._id}`)}
+                            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                         >
+                           {room.status === 'completed' ? 'View Results' : 'Rejoin Room'}
+                         </button>
+                         {room.status === 'completed' && (
+                           <button 
+                              onClick={() => handleDeleteRoom(room.roomId || room._id)}
+                              className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                              title="Delete Interview"
+                           >
+                             Delete
+                           </button>
+                         )}
+                       </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <QuestionBank />
+        )}
       </div>
     </div>
   );
