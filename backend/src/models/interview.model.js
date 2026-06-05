@@ -16,6 +16,10 @@ const interviewSchema = new Schema({
         type: String,
         default: "Guest Candidate" 
     },
+    activeQuestion: {
+        type: Schema.Types.Mixed, // Can hold {title, description}
+        default: null
+    },
     codeState: { 
         type: String, 
         default: "" 

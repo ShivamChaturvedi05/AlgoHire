@@ -32,7 +32,8 @@ export const getRoom = async (roomId) => {
         codeState: data.codeState || "",
         language: data.language || "javascript",
         whiteboardState: data.whiteboardState ? JSON.parse(data.whiteboardState) : [],
-        candidateName: data.candidateName || null
+        candidateName: data.candidateName || null,
+        activeQuestion: data.activeQuestion ? JSON.parse(data.activeQuestion) : null
     };
 };
 
@@ -75,4 +76,16 @@ export const deleteRoom = async (roomId) => {
 export const updateCandidateName = async (roomId, candidateName) => {
     const key = ROOM_PREFIX + roomId;
     await redis.hset(key, "candidateName", candidateName);
+};
+
+/**
+ * Update the active question for a room.
+ */
+export const updateActiveQuestion = async (roomId, question) => {
+    const key = ROOM_PREFIX + roomId;
+    if (question) {
+        await redis.hset(key, "activeQuestion", JSON.stringify(question));
+    } else {
+        await redis.hdel(key, "activeQuestion");
+    }
 };

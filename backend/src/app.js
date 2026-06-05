@@ -21,11 +21,13 @@ app.use(cookieParser());
 import userRouter from './routes/user.routes.js';
 import roomRouter from './routes/room.routes.js';
 import compilerRouter from './routes/compiler.routes.js';
+import questionRouter from './routes/question.routes.js';
 
 
 //http://localhost:8000/api/v1/users/
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/rooms", roomRouter);
 app.use("/api/v1/compiler", compilerRouter);
+app.use("/api/v1/questions", questionRouter);
 
 export { app };

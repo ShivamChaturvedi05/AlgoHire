@@ -85,6 +85,19 @@ const setupSocket = (io) => {
             }
         });
 
+        socket.on("send-question", async ({ roomId, question }) => {
+            io.to(roomId).emit("active-question-update", question);
+            try {
+                await roomStore.updateActiveQuestion(roomId, question);
+            } catch (err) {
+                console.error("Failed to update active question in Redis:", err.message);
+            }
+        });
+
+        socket.on("test-results", ({ roomId, results }) => {
+            socket.to(roomId).emit("test-results", { results });
+        });
+
         // End Interview — save final state from Redis to MongoDB, then cleanup
         socket.on("end-interview", async ({ roomId }) => {
             console.log(`🛑 End interview requested for room: ${roomId}`);
@@ -103,6 +116,9 @@ const setupSocket = (io) => {
                     updateData.whiteboardState = state.whiteboardState;
                     if (state.candidateName) {
                         updateData.candidateName = state.candidateName;
+                    }
+                    if (state.activeQuestion) {
+                        updateData.activeQuestion = state.activeQuestion;
                     }
                 }
 
