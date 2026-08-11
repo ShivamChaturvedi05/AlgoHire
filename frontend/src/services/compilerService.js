@@ -1,11 +1,13 @@
 import api from './api';
 
 const compilerService = {
-  execute: async (language, code) => {
+  execute: async (language, code, input = "", roomId) => {
     try {
       const response = await api.post('/compiler/execute', {
         language,
-        code
+        code,
+        input,
+        roomId
       });
       return response.data;
     } catch (error) {
@@ -13,12 +15,13 @@ const compilerService = {
       throw error;
     }
   },
-  runTests: async (language, code, testCases) => {
+  runTests: async (language, code, testCases, roomId) => {
     try {
       const response = await api.post('/compiler/run-tests', {
         language,
         code,
-        testCases
+        testCases,
+        roomId
       });
       return response.data;
     } catch (error) {

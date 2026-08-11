@@ -187,6 +187,7 @@ function Login() {
             </form>
 
             {/* DIVIDER: "Or continue with" */}
+            {false && (
             <div>
               <div className="relative mt-10">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -240,6 +241,7 @@ function Login() {
                 </a>
               </div>
             </div>
+            )}
 
             {/* Toggle Login/Register */}
             <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">

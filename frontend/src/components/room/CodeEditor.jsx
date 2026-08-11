@@ -1,10 +1,19 @@
 import { useEffect, useRef, memo } from "react";
 import Editor from "@monaco-editor/react";
 
+const CODE_TEMPLATES = {
+  javascript: `// Start coding here...\n`,
+  python: `# Start coding here...\n`,
+  java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Start coding here...\n        \n    }\n}\n`,
+  cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // Start coding here...\n    \n    return 0;\n}\n`
+};
+
 const CodeEditor = memo(({ socket, roomId, language, initialCode, onCodeChange, theme }) => {
   const editorRef = useRef(null);
   const isRemoteUpdate = useRef(false);
   const codeSyncTimer = useRef(null);
+  const codeByLanguage = useRef({});
+  const previousLanguage = useRef(language);
 
   const socketRef = useRef(socket);
   const roomIdRef = useRef(roomId);
@@ -18,10 +27,17 @@ const CodeEditor = memo(({ socket, roomId, language, initialCode, onCodeChange, 
     editorRef.current = editor;
 
     // If we have initial code from Redis, set it
-    if (initialCode !== null && initialCode !== undefined) {
+    if (initialCode !== null && initialCode !== undefined && initialCode.trim() !== "" && initialCode !== "// Start coding here...") {
       isRemoteUpdate.current = true;
       editor.setValue(initialCode);
       isRemoteUpdate.current = false;
+      codeByLanguage.current[language] = initialCode;
+    } else {
+      isRemoteUpdate.current = true;
+      editor.setValue(CODE_TEMPLATES[language] || CODE_TEMPLATES.javascript);
+      isRemoteUpdate.current = false;
+      onCodeChangeRef.current?.(CODE_TEMPLATES[language] || CODE_TEMPLATES.javascript);
+      codeByLanguage.current[language] = CODE_TEMPLATES[language] || CODE_TEMPLATES.javascript;
     }
 
     editor.onDidChangeModelContent((event) => {
@@ -94,6 +110,34 @@ const CodeEditor = memo(({ socket, roomId, language, initialCode, onCodeChange, 
       if (codeSyncTimer.current) clearTimeout(codeSyncTimer.current);
     };
   }, []);
+
+  // Handle language change template insertion
+  useEffect(() => {
+    if (editorRef.current) {
+      // 1. Save current code to the previous language
+      if (previousLanguage.current) {
+        codeByLanguage.current[previousLanguage.current] = editorRef.current.getValue();
+      }
+
+      // 2. Load the saved code for the NEW language, OR the template
+      isRemoteUpdate.current = true;
+      const newCode = codeByLanguage.current[language] || CODE_TEMPLATES[language] || CODE_TEMPLATES.javascript;
+      editorRef.current.setValue(newCode);
+      isRemoteUpdate.current = false;
+      
+      onCodeChangeRef.current?.(newCode);
+      
+      if (socketRef.current) {
+          socketRef.current.emit("code-sync", {
+              roomId: roomIdRef.current,
+              code: newCode
+          });
+      }
+
+      // 3. Update previousLanguage ref
+      previousLanguage.current = language;
+    }
+  }, [language]);
 
   return (
     <div className="h-full w-full overflow-hidden">

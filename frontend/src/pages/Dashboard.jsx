@@ -134,7 +134,7 @@ function Dashboard() {
                           Room ID: {room.roomId || room._id}
                         </p>
                         <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300 font-medium">
-                          Candidate: {room.candidateName && room.candidateName !== "Guest Candidate" ? room.candidateName : "Pending/Unknown"}
+                          Candidates: {(room.candidateNames && room.candidateNames.length > 0) ? room.candidateNames.join(', ') : (room.candidateName && room.candidateName !== "Guest Candidate" ? room.candidateName : "Pending/Unknown")}
                         </p>
                         <p className="mt-1 truncate text-xs leading-5 text-gray-500 dark:text-gray-400">
                           Created on {formatDate(room.createdAt)}
