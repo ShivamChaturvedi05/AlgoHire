@@ -12,9 +12,9 @@ const interviewSchema = new Schema({
         ref: 'User', 
         required: true 
     },
-    candidateName: { 
-        type: String,
-        default: "Guest Candidate" 
+    candidateNames: { 
+        type: [String],
+        default: [] 
     },
     activeQuestion: {
         type: Schema.Types.Mixed, // Can hold {title, description}

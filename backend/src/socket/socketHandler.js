@@ -45,7 +45,7 @@ const setupSocket = (io) => {
             io.to(roomId).emit("candidate-joined", { username });
             try {
                 if (username) {
-                    await roomStore.updateCandidateName(roomId, username);
+                    await roomStore.addCandidateName(roomId, username);
                 }
             } catch (err) {
                 console.error("Failed to update candidate name in Redis:", err.message);
@@ -114,8 +114,8 @@ const setupSocket = (io) => {
                     updateData.codeState = state.codeState;
                     updateData.language = state.language;
                     updateData.whiteboardState = state.whiteboardState;
-                    if (state.candidateName) {
-                        updateData.candidateName = state.candidateName;
+                    if (state.candidateNames && state.candidateNames.length > 0) {
+                        updateData.candidateNames = state.candidateNames;
                     }
                     if (state.activeQuestion) {
                         updateData.activeQuestion = state.activeQuestion;

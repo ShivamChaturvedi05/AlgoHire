@@ -32,7 +32,7 @@ export const getRoom = async (roomId) => {
         codeState: data.codeState || "",
         language: data.language || "javascript",
         whiteboardState: data.whiteboardState ? JSON.parse(data.whiteboardState) : [],
-        candidateName: data.candidateName || null,
+        candidateNames: data.candidateNames ? JSON.parse(data.candidateNames) : [],
         activeQuestion: data.activeQuestion ? JSON.parse(data.activeQuestion) : null
     };
 };
@@ -71,11 +71,19 @@ export const deleteRoom = async (roomId) => {
 };
 
 /**
- * Update the candidate name for a room.
+ * Add a candidate name for a room.
  */
-export const updateCandidateName = async (roomId, candidateName) => {
+export const addCandidateName = async (roomId, candidateName) => {
     const key = ROOM_PREFIX + roomId;
-    await redis.hset(key, "candidateName", candidateName);
+    const existing = await redis.hget(key, "candidateNames");
+    let names = [];
+    if (existing) {
+        names = JSON.parse(existing);
+    }
+    if (!names.includes(candidateName)) {
+        names.push(candidateName);
+        await redis.hset(key, "candidateNames", JSON.stringify(names));
+    }
 };
 
 /**
