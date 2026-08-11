@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import { getRoom } from "../socket/roomStore.js";
 import { exec } from "child_process";
 import fs from "fs/promises";
 import path from "path";
@@ -11,10 +12,19 @@ import util from "util";
 const execPromise = util.promisify(exec);
 
 const executeCode = asyncHandler(async (req, res) => {
-    const { code, language } = req.body;
+    const { code, language, input = "", roomId } = req.body;
 
     if (!code) {
         throw new ApiError(400, "Code is required");
+    }
+
+    if (!roomId) {
+        throw new ApiError(400, "Room ID is required");
+    }
+
+    const room = await getRoom(roomId);
+    if (!room) {
+        throw new ApiError(403, "Unauthorized: Invalid or inactive Room ID");
     }
 
     // Create a temporary directory for execution to isolate files
@@ -25,28 +35,31 @@ const executeCode = asyncHandler(async (req, res) => {
     let stderr = "";
     
     try {
+        const inputFilePath = path.join(tmpDir, "input.txt");
+        await fs.writeFile(inputFilePath, input);
+
         if (language === "javascript") {
             const filePath = path.join(tmpDir, "index.js");
             await fs.writeFile(filePath, code);
-            const { stdout: out, stderr: err } = await execPromise(`node index.js`, { cwd: tmpDir, timeout: 10000 });
+            const { stdout: out, stderr: err } = await execPromise(`node index.js < input.txt`, { cwd: tmpDir, timeout: 10000 });
             stdout = out;
             stderr = err;
         } else if (language === "python") {
             const filePath = path.join(tmpDir, "script.py");
             await fs.writeFile(filePath, code);
-            const { stdout: out, stderr: err } = await execPromise(`python script.py`, { cwd: tmpDir, timeout: 10000 });
+            const { stdout: out, stderr: err } = await execPromise(`python script.py < input.txt`, { cwd: tmpDir, timeout: 10000 });
             stdout = out;
             stderr = err;
         } else if (language === "java") {
             const filePath = path.join(tmpDir, "Main.java");
             await fs.writeFile(filePath, code);
-            const { stdout: out, stderr: err } = await execPromise(`javac Main.java && java Main`, { cwd: tmpDir, timeout: 10000 });
+            const { stdout: out, stderr: err } = await execPromise(`javac Main.java && java Main < input.txt`, { cwd: tmpDir, timeout: 10000 });
             stdout = out;
             stderr = err;
         } else if (language === "cpp") {
             const filePath = path.join(tmpDir, "main.cpp");
             await fs.writeFile(filePath, code);
-            const { stdout: out, stderr: err } = await execPromise(`g++ main.cpp -o main.exe && main.exe`, { cwd: tmpDir, timeout: 10000 });
+            const { stdout: out, stderr: err } = await execPromise(`g++ main.cpp -o main.exe && main.exe < input.txt`, { cwd: tmpDir, timeout: 10000 });
             stdout = out;
             stderr = err;
         } else {
@@ -54,7 +67,11 @@ const executeCode = asyncHandler(async (req, res) => {
         }
     } catch (error) {
         // If execution fails (e.g., syntax error, compilation error, timeout)
-        stderr = error.stderr || error.message;
+        if (error.killed) {
+            stderr = "Execution timed out. Did you write code that expects input (like cin or scanf) without providing any?";
+        } else {
+            stderr = error.stderr || error.message;
+        }
         stdout = error.stdout || "";
     } finally {
         // Cleanup temp directory
@@ -78,10 +95,19 @@ const executeCode = asyncHandler(async (req, res) => {
 });
 
 const executeTests = asyncHandler(async (req, res) => {
-    const { code, language, testCases } = req.body;
+    const { code, language, testCases, roomId } = req.body;
 
     if (!code || !testCases || !Array.isArray(testCases)) {
         throw new ApiError(400, "Code and an array of testCases are required");
+    }
+
+    if (!roomId) {
+        throw new ApiError(400, "Room ID is required");
+    }
+
+    const room = await getRoom(roomId);
+    if (!room) {
+        throw new ApiError(403, "Unauthorized: Invalid or inactive Room ID");
     }
 
     const tmpDir = path.join(os.tmpdir(), "algohire-" + uuidv4());
