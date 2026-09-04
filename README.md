@@ -26,6 +26,7 @@ A real-time technical interview platform featuring a collaborative code editor, 
 | Whiteboard | Excalidraw (`@excalidraw/excalidraw`) |
 | Backend | Express 5, Node.js (ES Modules) |
 | Database | MongoDB (Mongoose 8) |
+| In-Memory Store | Redis |
 | Authentication | JWT (access + refresh tokens), bcrypt |
 | Real-Time | Socket.IO |
 | Code Execution | [Piston API](https://github.com/engineer-man/piston) |
@@ -105,6 +106,7 @@ AlgoHire/
 
 - **Node.js** (v18 or later)
 - **MongoDB** (local instance or [MongoDB Atlas](https://www.mongodb.com/atlas))
+- **Redis** (running locally or via Docker)
 
 ### 1. Clone the Repository
 
@@ -114,6 +116,13 @@ cd AlgoHire
 ```
 
 ### 2. Backend Setup
+
+Ensure Redis is running. You can start it using Docker from the project root:
+
+```bash
+docker-compose up -d
+```
+*(Or install and run Redis directly on your machine if you are not using Docker)*
 
 ```bash
 cd backend
@@ -129,6 +138,7 @@ ACCESS_TOKEN_SECRET=your_access_token_secret
 ACCESS_TOKEN_EXPIRY=1d
 REFRESH_TOKEN_SECRET=your_refresh_token_secret
 REFRESH_TOKEN_EXPIRY=10d
+REDIS_URL=redis://localhost:6379
 ```
 
 Start the backend server:
